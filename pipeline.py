@@ -15,7 +15,7 @@ from prompts import (
 )
 from model_select import load_allowed_models, select_tiers, resolve_model
 from clients import FireworksClient
-from local_solver import solve_local, solve_local_ensemble
+
 
 INPUT_PATH = os.environ.get("TASKS_INPUT_PATH", "/input/tasks.json")
 OUTPUT_PATH = os.environ.get("TASKS_OUTPUT_PATH", "/output/results.json")
@@ -38,16 +38,6 @@ async def solve_task(client, tiers, sem, task):
     category = classify(prompt)
     system_prompt = SYSTEM_PROMPTS.get(category, SYSTEM_PROMPTS["factual_knowledge"])
     temperature = TEMPERATURE_BY_CATEGORY.get(category, 0.0)
-
-    ensemble_ans, conf = solve_local_ensemble(prompt, system_prompt)
-    if ensemble_ans and conf >= 0.67:
-        log(f"[local-ensemble] {task_id} category={category} confidence={conf:.0%} tokens=0")
-        return {"task_id": task_id, "answer": ensemble_ans}
-
-    local_answer = solve_local(prompt, temperature=temperature, system_prompt=system_prompt)
-    if local_answer is not None:
-        log(f"[local] {task_id} category={category} tokens=0")
-        return {"task_id": task_id, "answer": local_answer}
 
     tier = TIER_BY_CATEGORY.get(category, "strong")
     model = resolve_model(tier, tiers)
