@@ -6,14 +6,14 @@ import time
 
 from classify import classify
 from deterministic import try_deterministic
+from normalize import normalize
 from prompts import (
     SYSTEM_PROMPTS,
-    TIER_BY_CATEGORY,
     MAX_TOKENS_BY_CATEGORY,
     REASONING_EFFORT_BY_CATEGORY,
     TEMPERATURE_BY_CATEGORY,
 )
-from model_select import load_allowed_models, select_tiers, resolve_model
+from model_select import load_allowed_models, select_tiers, resolve_model, resolve_retry
 from clients import FireworksClient
 
 
@@ -30,31 +30,33 @@ async def solve_task(client, tiers, sem, task):
     task_id = task["task_id"]
     prompt = task["prompt"]
 
+    category = classify(prompt)
+
     det_answer = try_deterministic(prompt)
     if det_answer is not None:
-        log(f"[det] {task_id} tokens=0")
-        return {"task_id": task_id, "answer": det_answer}
+        answer = normalize(category, det_answer)
+        log(f"[det] {task_id} category={category} tokens=0")
+        return {"task_id": task_id, "answer": answer}
 
-    category = classify(prompt)
     system_prompt = SYSTEM_PROMPTS.get(category, SYSTEM_PROMPTS["factual_knowledge"])
     temperature = TEMPERATURE_BY_CATEGORY.get(category, 0.0)
 
-    tier = TIER_BY_CATEGORY.get(category, "strong")
-    model = resolve_model(tier, tiers)
+    model = resolve_model(category, tiers)
+    fallback = resolve_retry(category, tiers, model)
     max_tokens = MAX_TOKENS_BY_CATEGORY.get(category, 300)
     reasoning_effort = REASONING_EFFORT_BY_CATEGORY.get(category)
-    fallback = tiers["retry"] if tiers["retry"] != model else tiers["strong"]
 
     async with sem:
         for attempt, use_model in enumerate([model, fallback]):
             try:
-                answer, tokens, latency_ms = await client.complete(
+                raw_answer, tokens, latency_ms = await client.complete(
                     use_model, system_prompt, prompt, max_tokens,
                     reasoning_effort=reasoning_effort, temperature=temperature
                 )
+                answer = normalize(category, raw_answer) if raw_answer else ""
                 if answer:
                     warn = " ⚠ SLOW" if latency_ms >= SLOW_CALL_WARNING_MS else ""
-                    log(f"[ok] {task_id} category={category} tier={tier} model={use_model} tokens={tokens} latency={latency_ms}ms{warn}")
+                    log(f"[ok] {task_id} category={category} model={use_model} tokens={tokens} latency={latency_ms}ms{warn}")
                     return {"task_id": task_id, "answer": answer}
             except Exception as exc:
                 log(f"[retry] {task_id} attempt={attempt} model={use_model} error={exc}")
@@ -88,7 +90,7 @@ async def run():
 
     models = load_allowed_models()
     tiers = select_tiers(models)
-    log(f"Model tiers -> cheap: {tiers['cheap']} | strong: {tiers['strong']} | retry: {tiers['retry']}")
+    log(f"Models ranked: {tiers['ranked']}")
 
     client = FireworksClient()
     sem = asyncio.Semaphore(MAX_CONCURRENCY)

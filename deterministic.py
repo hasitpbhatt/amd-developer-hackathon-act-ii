@@ -313,6 +313,41 @@ def solve_word_problem(prompt):
         return str(int(result))
     return str(result)
 
+_CODE_RESULT_RE = re.compile(r"(?:result|answer|output)\s*[=:]\s*(-?\d+(?:\.\d+)?|True|False|None|['\"][^'\"]+['\"])", re.I)
+_CODE_RETURN_RE = re.compile(r"return\s+(-?\d+(?:\.\d+)?|True|False|None|['\"][^'\"]+['\"])", re.I)
+
+def solve_code_direct(prompt):
+    if not re.search(r"```|def |function |class ", prompt):
+        return None
+    for pattern in [_CODE_RESULT_RE, _CODE_RETURN_RE]:
+        m = pattern.search(prompt)
+        if m:
+            return m.group(1).strip().strip("'\"")
+    return None
+
+_LOGIC_COMP_RE = re.compile(r"\b(and|or|not)\b", re.I)
+_LOGIC_EVAL_RE = re.compile(r"((?:True|False)\s+(?:and|or)\s+(?:True|False)|not\s+(?:True|False))", re.I)
+
+def solve_logical_basic(prompt):
+    if not _LOGIC_COMP_RE.search(prompt):
+        return None
+    text = prompt.strip()
+    for pattern in [_LOGIC_EVAL_RE]:
+        for m in pattern.finditer(text):
+            expr = m.group(0).strip()
+            if "True" in expr and "False" in expr:
+                try:
+                    result = eval(expr, {"__builtins__": {}}, {"True": True, "False": False})
+                    return str(result)
+                except Exception:
+                    continue
+    m = re.search(r"\b(True|False)\b", text)
+    if m and _LOGIC_COMP_RE.search(text):
+        val = m.group(0)
+        result = eval(val, {"__builtins__": {}}, {"True": True, "False": False})
+        return str(result)
+    return None
+
 DETERMINISTIC_SOLVERS = [
     ("count", solve_counting),
     ("true_false", solve_true_false),
@@ -321,6 +356,8 @@ DETERMINISTIC_SOLVERS = [
     ("convert", solve_convert),
     ("word_problem", solve_word_problem),
     ("math", solve_math),
+    ("code", solve_code_direct),
+    ("logical", solve_logical_basic),
     ("json", solve_json),
     ("extract", solve_extract),
     ("sentiment", solve_sentiment),

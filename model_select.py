@@ -3,6 +3,17 @@ import re
 
 _SIZE_RE = re.compile(r"(\d+(?:\.\d+)?|\d+p\d+)\s*b\b", re.I)
 
+_CATEGORY_PARETO = {
+    "sentiment_classification": 0,
+    "named_entity_recognition": 0,
+    "summarization": 0,
+    "factual_knowledge": 1,
+    "math_reasoning": 2,
+    "logical_reasoning": 3,
+    "code_debugging": 3,
+    "code_generation": 3,
+}
+
 def _inferred_size(model_id):
     match = _SIZE_RE.search(model_id.replace("_", "-"))
     if not match:
@@ -22,23 +33,42 @@ def load_allowed_models():
 
 def select_tiers(models):
     ranked = sorted(models, key=_inferred_size)
-    default_cheap = ranked[0]
     default_strong = ranked[-1]
 
-    cheap_override = os.environ.get("CHEAP_MODEL_OVERRIDE", "").strip()
     strong_override = os.environ.get("STRONG_MODEL_OVERRIDE", "").strip()
     retry_override = os.environ.get("RETRY_MODEL_OVERRIDE", "").strip()
 
-    cheap = cheap_override if cheap_override in models else default_cheap
-    strong = strong_override if strong_override in models else default_strong
+    if strong_override in models:
+        strong_idx = ranked.index(strong_override)
+    else:
+        strong_idx = len(ranked) - 1
 
     if retry_override in models:
-        retry = retry_override
+        retry_idx = ranked.index(retry_override)
     else:
-        others = [m for m in ranked if m != strong]
-        retry = others[-1] if others else strong
+        retry_idx = max(0, strong_idx - 1)
 
-    return {"cheap": cheap, "strong": strong, "retry": retry}
+    return {"ranked": ranked, "strong_idx": strong_idx, "retry_idx": retry_idx}
 
-def resolve_model(tier, tiers):
-    return tiers.get(tier, tiers["strong"])
+def resolve_model(category, tiers):
+    ranked = tiers["ranked"]
+    pareto_idx = _CATEGORY_PARETO.get(category, 1)
+    n = len(ranked)
+    if n == 1:
+        return ranked[0]
+    if pareto_idx == 0:
+        return ranked[0]
+    if pareto_idx >= 3:
+        return ranked[tiers["strong_idx"]]
+    bucket = n // 3
+    model_idx = min(bucket * pareto_idx, n - 1)
+    return ranked[model_idx]
+
+def resolve_retry(category, tiers, primary_model):
+    ranked = tiers["ranked"]
+    idx = tiers["retry_idx"]
+    retry = ranked[idx]
+    if retry == primary_model:
+        others = [m for m in ranked if m != primary_model]
+        retry = others[-1] if others else primary_model
+    return retry

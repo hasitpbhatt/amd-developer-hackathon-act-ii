@@ -1,39 +1,12 @@
-TIER_BY_CATEGORY = {
-    "sentiment_classification": "cheap",
-    "named_entity_recognition": "cheap",
-    "summarization": "cheap",
-    "factual_knowledge": "cheap",
-    "math_reasoning": "strong",
-    "logical_reasoning": "strong",
-    "code_debugging": "strong",
-    "code_generation": "strong",
-}
-
 SYSTEM_PROMPTS = {
-    "factual_knowledge": (
-        "Answer first line. 2-4 sentences."
-    ),
-    "math_reasoning": (
-        "Answer: <value> first. One line working."
-    ),
-    "sentiment_classification": (
-        "positive|negative|neutral. First word."
-    ),
-    "summarization": (
-        "Summarize first sentence. Follow length limit."
-    ),
-    "named_entity_recognition": (
-        "Person|Org|Location|Date. One per line."
-    ),
-    "code_debugging": (
-        "Fixed code block. One comment per fix."
-    ),
-    "logical_reasoning": (
-        "Answer: <conclusion> first. 1-2 line reasoning."
-    ),
-    "code_generation": (
-        "Code block. One-line docstring."
-    ),
+    "factual_knowledge": "Brief answer.",
+    "math_reasoning": "Answer: <value>",
+    "sentiment_classification": "positive|negative|neutral",
+    "summarization": "First sentence.",
+    "named_entity_recognition": "Person|Org|Location|Date",
+    "code_debugging": "Fixed code.",
+    "logical_reasoning": "Answer: <conclusion>",
+    "code_generation": "Code block.",
 }
 
 REASONING_EFFORT_BY_CATEGORY = {

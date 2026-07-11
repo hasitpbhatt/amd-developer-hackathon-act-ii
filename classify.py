@@ -1,4 +1,6 @@
 import re
+from collections import Counter
+from math import sqrt
 
 CATEGORIES = (
     "code_debugging",
@@ -36,38 +38,57 @@ _REGEX_SCORING = [
     ("summarization", _SUMMARY_WORDS, 5),
 ]
 
-_REGEX_THRESHOLD = 4
+_REGEX_THRESHOLD = 3
 
-_ONNX_MODEL = None
-_CAT_EMBEDDINGS = None
+_CAT_SEED_WORDS = {
+    "code_debugging": {"bug", "fix", "error", "debug", "broken", "exception", "traceback", "incorrect", "not working", "my code", "def ", "class ", "function", "import ", "=>", "```"},
+    "code_generation": {"write", "implement", "create", "generate", "function", "program", "script", "code", "algorithm", "class", "method"},
+    "logical_reasoning": {"if and only if", "either", "neither", "logic", "puzzle", "condition", "conclusion", "which one", "truth", "lying", "implies", "therefore", "deduce", "infer"},
+    "math_reasoning": {"calculate", "sum", "difference", "product", "quotient", "equation", "solve", "percent", "percentage", "total", "average", "ratio", "how many", "how much", "profit", "discount", "plus", "minus", "times", "divided"},
+    "named_entity_recognition": {"extract", "named entity", "entities", "names", "people", "persons", "organizations", "locations", "dates", "identify", "list"},
+    "sentiment_classification": {"sentiment", "positive", "negative", "neutral", "emotion", "tone", "feel", "opinion", "review", "feedback"},
+    "summarization": {"summarize", "summary", "condense", "tl;dr", "shorten", "in one sentence", "brief", "concise", "overview", "key points"},
+    "factual_knowledge": {"what is", "who is", "where is", "when did", "define", "meaning", "explain", "describe", "capital", "population", "located", "famous", "history", "known for", "consists of", "composed of", "refers to"},
+}
 
-def classify_onnx(text):
-    import numpy as np
-    from numpy.linalg import norm
-    try:
-        from fastembed import TextEmbedding
-    except ImportError:
+def _tokenize(text):
+    return re.findall(r"[a-zA-Z][a-zA-Z0-9']*(?: [a-zA-Z][a-zA-Z0-9']*)?", text.lower())
+
+def _build_vector(tokens, seed_set):
+    tv = Counter()
+    for tok in tokens:
+        if tok in seed_set:
+            tv[tok] += 1
+    return tv
+
+def _cosine_sim(a, b):
+    intersection = set(a) & set(b)
+    num = sum(a[k] * b[k] for k in intersection)
+    den = sqrt(sum(v * v for v in a.values())) * sqrt(sum(v * v for v in b.values()))
+    return num / den if den > 0 else 0.0
+
+_FALLBACK_VECTORS = None
+
+def classify_fallback(text):
+    global _FALLBACK_VECTORS
+    if _FALLBACK_VECTORS is None:
+        _FALLBACK_VECTORS = {}
+        for cat, seeds in _CAT_SEED_WORDS.items():
+            _FALLBACK_VECTORS[cat] = Counter({s: 1 for s in seeds})
+    tokens = _tokenize(text)
+    if not tokens:
         return None
-    global _ONNX_MODEL, _CAT_EMBEDDINGS
-    if _ONNX_MODEL is None:
-        _ONNX_MODEL = TextEmbedding("sentence-transformers/all-MiniLM-L6-v2")
-        _CAT_EMBEDDINGS = {}
-        for cat in CATEGORIES:
-            emb = list(_ONNX_MODEL.embed([cat]))[0]
-            _CAT_EMBEDDINGS[cat] = emb / (norm(emb) + 1e-10)
-    try:
-        emb = list(_ONNX_MODEL.embed([text]))[0]
-        emb = emb / (norm(emb) + 1e-10)
-        best_cat = "factual_knowledge"
-        best_score = -1.0
-        for cat, cat_emb in _CAT_EMBEDDINGS.items():
-            score = float(np.dot(emb, cat_emb))
-            if score > best_score:
-                best_score = score
-                best_cat = cat
-        return best_cat
-    except Exception:
+    qv = _build_vector(tokens, set(w for seeds in _CAT_SEED_WORDS.values() for w in seeds))
+    if not qv:
         return None
+    best_cat = "factual_knowledge"
+    best_score = -1.0
+    for cat, fv in _FALLBACK_VECTORS.items():
+        score = _cosine_sim(qv, fv)
+        if score > best_score:
+            best_score = score
+            best_cat = cat
+    return best_cat
 
 def classify(prompt):
     text = prompt.strip()
@@ -83,8 +104,8 @@ def classify(prompt):
     if best_score >= _REGEX_THRESHOLD:
         return best_cat
 
-    onnx_cat = classify_onnx(text)
-    if onnx_cat is not None:
-        return onnx_cat
+    fallback_cat = classify_fallback(text)
+    if fallback_cat is not None:
+        return fallback_cat
 
     return "factual_knowledge"
