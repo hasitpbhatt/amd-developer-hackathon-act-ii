@@ -153,7 +153,7 @@ if page == "Architecture":
     with col2:
         st.subheader("⚡ 2. Solver")
         st.markdown("**Local:** vLLM offline (Qwen2.5-3B) — zero cost")
-        st.markdown("**Big:** Fireworks AI (72B) or Mistral Large, with local fallback (Qwen2.5-14B)")
+        st.markdown("**Big:** Fireworks AI (72B) with Mistral Large fallback")
     with col3:
         st.subheader("✅ 3. Verifier")
         st.markdown("Re-answers from scratch, compares for consistency. Low confidence → retry local with CoT → escalate to big.")
