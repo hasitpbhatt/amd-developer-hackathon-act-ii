@@ -16,7 +16,7 @@ OUTPUT_PATH = os.environ.get("TASKS_OUTPUT_PATH", "/output/results.json")
 MAX_CONCURRENCY = int(os.environ.get("MAX_CONCURRENCY", "6"))
 MAX_RUNTIME_SECONDS = 9 * 60
 SLOW_CALL_WARNING_MS = 20000
-FORCE_LLM = os.environ.get("FORCE_LLM", "").strip().lower() in ("1", "true", "yes")
+FORCE_LLM = "FIREWORKS_API_KEY" in os.environ
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
