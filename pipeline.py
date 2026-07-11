@@ -16,6 +16,7 @@ OUTPUT_PATH = os.environ.get("TASKS_OUTPUT_PATH", "/output/results.json")
 MAX_CONCURRENCY = int(os.environ.get("MAX_CONCURRENCY", "6"))
 MAX_RUNTIME_SECONDS = 9 * 60
 SLOW_CALL_WARNING_MS = 20000
+FORCE_LLM = os.environ.get("FORCE_LLM", "").strip().lower() in ("1", "true", "yes")
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
@@ -24,11 +25,12 @@ async def solve_task(client, models, sem, task):
     task_id = task["task_id"]
     prompt = task["prompt"]
 
-    det_answer = try_deterministic(prompt)
-    if det_answer is not None:
-        answer = normalize_answer(prompt, det_answer)
-        log(f"[det] {task_id} tokens=0")
-        return {"task_id": task_id, "answer": answer}
+    if not FORCE_LLM:
+        det_answer = try_deterministic(prompt)
+        if det_answer is not None:
+            answer = normalize_answer(prompt, det_answer)
+            log(f"[det] {task_id} tokens=0")
+            return {"task_id": task_id, "answer": answer}
 
     model = models["strongest"]
     async with sem:
