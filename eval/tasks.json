@@ -1,0 +1,158 @@
+[
+  {
+    "task_id": "sent_01",
+    "prompt": "Classify the sentiment: I absolutely love this product!"
+  },
+  {
+    "task_id": "sent_02",
+    "prompt": "Classify the sentiment: This is the worst experience ever."
+  },
+  {
+    "task_id": "sent_03",
+    "prompt": "Classify the sentiment: The sky is blue."
+  },
+  {
+    "task_id": "sent_04",
+    "prompt": "Classify the sentiment: The movie was not good at all."
+  },
+  {
+    "task_id": "sent_05",
+    "prompt": "What is the sentiment? 'This restaurant is fantastic.'"
+  },
+  {
+    "task_id": "math_01",
+    "prompt": "What is 24 + 18?"
+  },
+  {
+    "task_id": "math_02",
+    "prompt": "What is 15 * 3?"
+  },
+  {
+    "task_id": "math_03",
+    "prompt": "What is 100 - 37?"
+  },
+  {
+    "task_id": "math_04",
+    "prompt": "What is 144 / 12?"
+  },
+  {
+    "task_id": "math_05",
+    "prompt": "Calculate 25 percent of 200."
+  },
+  {
+    "task_id": "logic_01",
+    "prompt": "Evaluate: True and False"
+  },
+  {
+    "task_id": "logic_02",
+    "prompt": "Evaluate: True or False"
+  },
+  {
+    "task_id": "logic_03",
+    "prompt": "Evaluate: not False"
+  },
+  {
+    "task_id": "logic_04",
+    "prompt": "Evaluate: True and (False or True)"
+  },
+  {
+    "task_id": "logic_05",
+    "prompt": "Evaluate: not (True and False)"
+  },
+  {
+    "task_id": "fact_01",
+    "prompt": "The capital of France is Paris. What is the capital of France?"
+  },
+  {
+    "task_id": "fact_02",
+    "prompt": "Water has the chemical formula H2O. What is the chemical formula for water?"
+  },
+  {
+    "task_id": "fact_03",
+    "prompt": "Romeo and Juliet was written by William Shakespeare. Who wrote Romeo and Juliet?"
+  },
+  {
+    "task_id": "fact_04",
+    "prompt": "The largest planet in our solar system is Jupiter. What is the largest planet?"
+  },
+  {
+    "task_id": "fact_05",
+    "prompt": "There are 7 continents. How many continents are there?"
+  },
+  {
+    "task_id": "count_01",
+    "prompt": "Count the number of words in 'hello world foo bar'"
+  },
+  {
+    "task_id": "count_02",
+    "prompt": "Count the number of vowels in 'hello'"
+  },
+  {
+    "task_id": "string_01",
+    "prompt": "Uppercase of 'hello'"
+  },
+  {
+    "task_id": "string_02",
+    "prompt": "Reverse of 'abc'"
+  },
+  {
+    "task_id": "extract_01",
+    "prompt": "Extract the email address from: Contact me at user@example.com"
+  },
+  {
+    "task_id": "extract_02",
+    "prompt": "Extract the URL from: Visit https://example.com for more info"
+  },
+  {
+    "task_id": "ner_01",
+    "prompt": "Extract named entities from: Barack Obama was born in Hawaii."
+  },
+  {
+    "task_id": "ner_02",
+    "prompt": "Extract named entities from: Microsoft is based in Redmond."
+  },
+  {
+    "task_id": "ner_03",
+    "prompt": "Extract named entities from: Steve Jobs founded Apple Inc."
+  },
+  {
+    "task_id": "ner_04",
+    "prompt": "Extract named entities from: The Eiffel Tower is in Paris."
+  },
+  {
+    "task_id": "ner_05",
+    "prompt": "Extract named entities from: John and Mary went to London."
+  },
+  {
+    "task_id": "code_gen_01",
+    "prompt": "Write a Python function called `add` that returns the sum of a and b. Output only the function."
+  },
+  {
+    "task_id": "code_gen_02",
+    "prompt": "Write a Python function called `greet` that returns 'hello world'. Output only the function."
+  },
+  {
+    "task_id": "code_gen_03",
+    "prompt": "Write a Python function called `square` that returns n * n. Output only the function."
+  },
+  {
+    "task_id": "code_dbg_01",
+    "prompt": "Fix this function so it returns a + b:\ndef add(a, b):\n    return a - b"
+  },
+  {
+    "task_id": "code_dbg_02",
+    "prompt": "Fix this function to return the sum:\ndef total(nums):\n    result = 0\n    for n in nums:\n        result -= n\n    return result"
+  },
+  {
+    "task_id": "summ_01",
+    "prompt": "Summarize in one word: The movie was absolutely fantastic, amazing, and wonderful."
+  },
+  {
+    "task_id": "summ_02",
+    "prompt": "Summarize in one word: This is the worst meal I have ever had in my entire life."
+  },
+  {
+    "task_id": "summ_03",
+    "prompt": "Summarize: Revenue grew 20% year-over-year driven by cloud growth. Margins improved. EPS beat estimates."
+  }
+]

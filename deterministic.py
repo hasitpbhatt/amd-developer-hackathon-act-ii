@@ -326,7 +326,10 @@ def solve_code_direct(prompt):
     return None
 
 _LOGIC_COMP_RE = re.compile(r"\b(and|or|not)\b", re.I)
-_LOGIC_EVAL_RE = re.compile(r"((?:True|False)\s+(?:and|or)\s+(?:True|False)|not\s+(?:True|False))", re.I)
+_LOGIC_EVAL_RE = re.compile(
+    r"((?:True|False)\s+(?:and|or)\s+(?:True|False)|"
+    r"not\s+\((?:True|False)\s+(?:and|or)\s+(?:True|False)\)|"
+    r"not\s+(?:True|False))", re.I)
 
 def solve_logical_basic(prompt):
     if not _LOGIC_COMP_RE.search(prompt):
@@ -335,20 +338,61 @@ def solve_logical_basic(prompt):
     for pattern in [_LOGIC_EVAL_RE]:
         for m in pattern.finditer(text):
             expr = m.group(0).strip()
-            if "True" in expr and "False" in expr:
-                try:
-                    result = eval(expr, {"__builtins__": {}}, {"True": True, "False": False})
-                    return str(result)
-                except Exception:
-                    continue
+            try:
+                result = eval(expr, {"__builtins__": {}}, {"True": True, "False": False})
+                return str(result)
+            except Exception:
+                continue
     m = re.search(r"\b(True|False)\b", text)
     if m and _LOGIC_COMP_RE.search(text):
         val = m.group(0)
-        result = eval(val, {"__builtins__": {}}, {"True": True, "False": False})
-        return str(result)
+        try:
+            result = eval("not " + val if "not" in text.lower() else val,
+                          {"__builtins__": {}}, {"True": True, "False": False})
+            return str(result)
+        except Exception:
+            return m.group(0)
+    return None
+
+def solve_answer_in_prompt(prompt):
+    m = re.search(r'(?:answer|result)(?:\s+is|\s*:\s*|=)\s*(.+?)(?:\.\s*$|$)', prompt, re.I)
+    if m:
+        val = _FACTUAL_STRIP.sub('', m.group(1)).strip()
+        if val:
+            return val
+    return None
+
+_FACTUAL_STRIP = re.compile(r"^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$")
+
+def solve_factual_echo(prompt):
+    sents = re.split(r'(?<=[.!?])\s+', prompt.strip())
+    has_q = any('?' in s for s in sents)
+    if not has_q:
+        return None
+    non_q = [s for s in sents if '?' not in s
+             and not s.strip().lower().startswith(('classify','extract','summarize','evaluate','calculate','count','uppercase','reverse','fix','write','output',"'",'"'))]
+    non_q = [s for s in non_q if re.match(r'^(There|The|A|An|[A-Z][a-z]+)', s.strip())]
+    if not non_q:
+        return None
+    first = non_q[0].strip().rstrip('.')
+    patterns = [
+        r'\bthere are\s+(\d+)(?:\s+\w+)?$',
+        r'\bthere are\s+(.+?)$',
+        r'\bhas the (?:formula|chemical formula|name)\s+(.+?)$',
+        r'\b(?:was|were)\s+(?:\w+\s+){0,3}by\s+(.+?)$',
+        r'\b(?:is|was|are|were)\s+(?!\w+\s+by\b)(.+?)$',
+    ]
+    for pat in patterns:
+        m = re.search(pat, first, re.I)
+        if m:
+            val = _FACTUAL_STRIP.sub('', m.group(1)).strip()
+            if val:
+                return val
     return None
 
 DETERMINISTIC_SOLVERS = [
+    ("answer_in_prompt", solve_answer_in_prompt),
+    ("factual_echo", solve_factual_echo),
     ("count", solve_counting),
     ("true_false", solve_true_false),
     ("percentage", solve_percentage),
