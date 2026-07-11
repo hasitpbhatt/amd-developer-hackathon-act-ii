@@ -4,5 +4,7 @@
 *.mp4
 *.html
 *.pdf
+*.ipynb
+*.bak
 __pycache__
 *.pyc

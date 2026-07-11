@@ -7,8 +7,6 @@ RUN pip install --no-cache-dir vllm==0.16.0
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY tokensage.ipynb .
+COPY *.py ./
 
-RUN python -c "import json; nb=json.load(open('tokensage.ipynb')); code='\n\n'.join(''.join(c['source']) for c in nb['cells'] if c['cell_type']=='code'); open('tokensage_script.py','w').write(code)"
-
-CMD ["python", "tokensage_script.py"]
+CMD ["python", "run.py"]
