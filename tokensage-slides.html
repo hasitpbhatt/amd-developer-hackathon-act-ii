@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TokenSage — Hybrid Token-Efficient Routing Agent</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    background: #000;
+    color: #f5f5f7;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .slides-container {
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 10vw;
+    opacity: 0;
+    transform: translateX(40px);
+    transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+  }
+  .slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+  .slide.prev {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+
+  .slide-content {
+    max-width: 860px;
+    width: 100%;
+  }
+
+  .slide-content-center {
+    max-width: 860px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .slide-overline {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #5DE4E0;
+    margin-bottom: 12px;
+  }
+
+  .slide-title {
+    font-size: clamp(48px, 6vw, 80px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: #f5f5f7;
+    line-height: 1.05;
+    margin-bottom: 8px;
+  }
+
+  .slide-subtitle {
+    font-size: clamp(18px, 1.8vw, 24px);
+    font-weight: 400;
+    color: #86868b;
+    line-height: 1.4;
+    max-width: 600px;
+  }
+
+  .slide-heading {
+    font-size: clamp(32px, 3.5vw, 52px);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: #f5f5f7;
+    line-height: 1.1;
+    margin-bottom: 24px;
+  }
+
+  .slide-text {
+    font-size: clamp(15px, 1.3vw, 19px);
+    color: #86868b;
+    line-height: 1.6;
+    max-width: 680px;
+    margin-bottom: 12px;
+  }
+
+  .slide-text strong {
+    color: #f5f5f7;
+    font-weight: 600;
+  }
+
+  /* Statements (Problem slide) */
+  .statements {
+    margin-top: 4px;
+  }
+  .statement {
+    padding: 16px 0 16px 20px;
+    border-left: 2px solid rgba(93, 228, 224, 0.25);
+    margin-bottom: 4px;
+  }
+  .statement:last-child { margin-bottom: 0; }
+  .statement-title {
+    font-size: clamp(16px, 1.3vw, 20px);
+    font-weight: 600;
+    color: #f5f5f7;
+    margin-bottom: 3px;
+  }
+  .statement-text {
+    font-size: clamp(14px, 1.1vw, 17px);
+    color: #86868b;
+    line-height: 1.55;
+    max-width: 640px;
+  }
+
+  /* Flow (Architecture slide) */
+  .flow {
+    margin-top: 8px;
+  }
+  .flow-step {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-step-local { border-left: 2px solid rgba(93, 228, 224, 0.3); padding-left: 16px; }
+  .flow-step-escalate { border-left: 2px solid rgba(134, 134, 139, 0.3); padding-left: 16px; }
+  .flow-dot {
+    font-size: 14px;
+    font-weight: 600;
+    color: #5DE4E0;
+    min-width: 20px;
+  }
+  .flow-name {
+    font-size: clamp(15px, 1.2vw, 18px);
+    font-weight: 600;
+    color: #f5f5f7;
+    min-width: 120px;
+  }
+  .flow-desc {
+    font-size: clamp(13px, 1vw, 15px);
+    color: #86868b;
+  }
+
+  /* Two-column layout */
+  .two-col {
+    display: flex;
+    gap: 48px;
+    margin-top: 8px;
+  }
+  .col {
+    flex: 1;
+    min-width: 0;
+  }
+  .col-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #5DE4E0;
+    margin-bottom: 12px;
+    letter-spacing: 0.02em;
+  }
+  .col-naive .col-title { color: #6e6e73; }
+  .col-item {
+    font-size: clamp(14px, 1.1vw, 17px);
+    color: #86868b;
+    line-height: 1.55;
+    margin-bottom: 8px;
+    padding-left: 14px;
+    border-left: 1px solid rgba(255,255,255,0.08);
+  }
+  .col-good .col-item { border-left-color: rgba(93, 228, 224, 0.25); }
+
+  /* Inline tag pills */
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0 8px;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #f5f5f7;
+    background: rgba(255,255,255,0.06);
+    padding: 4px 14px;
+    border-radius: 100px;
+  }
+
+  /* Improvements grid */
+  .improvements {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 32px;
+    margin-top: 16px;
+  }
+  .improvement {
+    font-size: clamp(13px, 1vw, 16px);
+    color: #86868b;
+    line-height: 1.5;
+    padding-left: 16px;
+    border-left: 1px solid rgba(255,255,255,0.06);
+  }
+  .improvement strong {
+    color: #f5f5f7;
+    font-weight: 600;
+  }
+
+  /* Numbers (Performance slide) */
+  .numbers {
+    display: flex;
+    justify-content: center;
+    gap: 60px;
+    margin-top: 16px;
+  }
+  .number-group {
+    text-align: center;
+    flex: 1;
+    max-width: 200px;
+  }
+  .number-value {
+    font-size: clamp(40px, 5vw, 72px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: #f5f5f7;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .number-value.accent { color: #5DE4E0; }
+  .number-label {
+    font-size: clamp(12px, 0.9vw, 15px);
+    color: #86868b;
+    font-weight: 400;
+  }
+  .number-rule {
+    width: 32px;
+    height: 2px;
+    background: #5DE4E0;
+    margin: 12px auto 0;
+    opacity: 0.4;
+  }
+
+  /* Tech stack — inline */
+  .tech-list {
+    font-size: clamp(14px, 1.2vw, 18px);
+    color: #86868b;
+    line-height: 1.8;
+    margin-top: 8px;
+  }
+  .tech-item {
+    display: inline;
+    color: #f5f5f7;
+    font-weight: 500;
+  }
+  .tech-sep {
+    color: rgba(255,255,255,0.2);
+    margin: 0 8px;
+  }
+
+  /* Summary slide */
+  .takeaways {
+    margin-top: 8px;
+  }
+  .takeaway {
+    font-size: clamp(16px, 1.4vw, 22px);
+    color: #f5f5f7;
+    font-weight: 500;
+    line-height: 1.4;
+    padding: 16px 0 16px 20px;
+    border-left: 2px solid rgba(93, 228, 224, 0.25);
+    margin-bottom: 4px;
+  }
+  .takeaway:last-child { margin-bottom: 0; }
+  .takeaway-detail {
+    font-size: clamp(13px, 1vw, 16px);
+    font-weight: 400;
+    color: #86868b;
+    margin-top: 3px;
+  }
+
+  /* Code inline */
+  .code {
+    font-family: 'SF Mono', 'SFMono-Regular', 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 0.9em;
+    color: #5DE4E0;
+  }
+
+  /* Progress bar */
+  .progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    background: #5DE4E0;
+    z-index: 100;
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Navigation */
+  .nav-arrow {
+    position: fixed;
+    bottom: 32px;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.2);
+    font-size: 22px;
+    cursor: pointer;
+    z-index: 100;
+    padding: 12px;
+    font-family: system-ui, -apple-system;
+    transition: color 0.2s;
+    user-select: none;
+  }
+  .nav-arrow:hover { color: rgba(255,255,255,0.6); }
+  .nav-arrow.prev { left: 28px; }
+  .nav-arrow.next { right: 28px; }
+
+  .slide-counter {
+    position: fixed;
+    bottom: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.18);
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    z-index: 100;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 768px) {
+    .slide { padding: 48px 6vw; }
+    .two-col { flex-direction: column; gap: 24px; }
+    .improvements { grid-template-columns: 1fr; }
+    .numbers { flex-direction: column; align-items: center; gap: 32px; }
+    .nav-arrow { bottom: 16px; }
+    .nav-arrow.prev { left: 12px; }
+    .nav-arrow.next { right: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="slides-container" id="slides">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active" data-slide="0">
+    <div class="slide-content">
+      <p class="slide-overline">AMD Developer Hackathon ACT II — Track 1</p>
+      <h1 class="slide-title">TokenSage</h1>
+      <p class="slide-subtitle" style="margin-bottom: 20px;">
+        Hybrid Token-Efficient Routing Agent
+      </p>
+      <p class="slide-text" style="font-size: clamp(14px, 1.1vw, 17px);">
+        Minimize Fireworks AI token spend by routing tasks between a free local vLLM model and a paid large model — without sacrificing accuracy.
+      </p>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: Problem -->
+  <div class="slide" data-slide="1">
+    <div class="slide-content">
+      <p class="slide-overline">Problem</p>
+      <h2 class="slide-heading">The Token Efficiency Challenge</h2>
+      <div class="statements">
+        <div class="statement">
+          <p class="statement-title">Local inference is free, but limited</p>
+          <p class="statement-text">AMD MI300X runs small models at zero cost, but a 3B model lacks accuracy on complex tasks.</p>
+        </div>
+        <div class="statement">
+          <p class="statement-title">Every Fireworks token costs you</p>
+          <p class="statement-text">The leaderboard ranks by token spend. The winner is whoever uses the fewest Fireworks tokens while meeting the accuracy gate.</p>
+        </div>
+        <div class="statement">
+          <p class="statement-title">The routing tradeoff</p>
+          <p class="statement-text">Route too aggressively and accuracy drops. Route too conservatively and the token budget burns. You need a smart, adaptive router.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Architecture -->
+  <div class="slide" data-slide="2">
+    <div class="slide-content">
+      <p class="slide-overline">Architecture</p>
+      <h2 class="slide-heading">Routing Pipeline</h2>
+      <div class="flow">
+        <div class="flow-step">
+          <span class="flow-dot">1</span>
+          <span class="flow-name">Router</span>
+          <span class="flow-desc">Qwen 3B classifies task type and decides LOCAL or BIG with confidence</span>
+        </div>
+        <div class="flow-step">
+          <span class="flow-dot">2</span>
+          <span class="flow-name">Local Solver</span>
+          <span class="flow-desc">Qwen 3B produces a structured JSON answer (thinking, answer, confidence)</span>
+        </div>
+        <div class="flow-step">
+          <span class="flow-dot">3</span>
+          <span class="flow-name">Self-Verification</span>
+          <span class="flow-desc">Re-answers from scratch without seeing the prior output; compares both</span>
+        </div>
+        <div class="flow-step">
+          <span class="flow-dot">4</span>
+          <span class="flow-name">Retry or Escalate</span>
+          <span class="flow-desc">If verification fails, retry locally with chain-of-thought; if still fails, escalate to Fireworks 72B</span>
+        </div>
+      </div>
+      <p class="slide-text" style="margin-top: 16px; font-size: clamp(12px, 0.9vw, 14px);">
+        No Fireworks key? Falls back to local vLLM Qwen 14B automatically.
+      </p>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Router + Key Improvements -->
+  <div class="slide" data-slide="3">
+    <div class="slide-content">
+      <p class="slide-overline">Core Innovation</p>
+      <h2 class="slide-heading">Two-Stage LLM Router</h2>
+      <p class="slide-text">
+        Classifies tasks into 5 types, then applies few-shot examples to decide LOCAL vs BIG.
+        Low-confidence LOCAL decisions (&lt;0.3) auto-escalate to BIG.
+      </p>
+      <div class="tags">
+        <span class="tag">math</span>
+        <span class="tag">code</span>
+        <span class="tag">reasoning</span>
+        <span class="tag">factual</span>
+        <span class="tag">creative</span>
+      </div>
+      <p class="slide-text" style="margin-top: 24px; font-size: clamp(13px, 1vw, 16px);">
+        <strong style="color:#f5f5f7;">Key improvements</strong>
+      </p>
+      <div class="improvements">
+        <div class="improvement">
+          <strong>Few-shot routing</strong><br>
+          6 labeled examples fix the LOCAL vs BIG decision boundary
+        </div>
+        <div class="improvement">
+          <strong>Re-answer verification</strong><br>
+          Solves from scratch — no confirmation bias from seeing the prior answer
+        </div>
+        <div class="improvement">
+          <strong>Local retry with CoT</strong><br>
+          Chain-of-thought retry before paying for escalation
+        </div>
+        <div class="improvement">
+          <strong>Structured JSON</strong><br>
+          All outputs wrap thinking, answer, confidence for deterministic parsing
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Verification Detail -->
+  <div class="slide" data-slide="4">
+    <div class="slide-content">
+      <p class="slide-overline">Key Technique</p>
+      <h2 class="slide-heading">Re-Answer Verification</h2>
+      <p class="slide-text">
+        Instead of asking &ldquo;Is this correct?&rdquo; &mdash; which small models confidently fail at &mdash;
+        we ask the model to solve from scratch again.
+      </p>
+      <div class="two-col" style="margin-top: 20px;">
+        <div class="col col-naive">
+          <p class="col-title">Naive approach</p>
+          <p class="col-item">Asks the model to judge its own answer &mdash; suffers from confirmation bias</p>
+          <p class="col-item" style="color:#6e6e73;">Small models almost never admit mistakes</p>
+        </div>
+        <div class="col col-good">
+          <p class="col-title">TokenSage approach</p>
+          <p class="col-item">Re-answers independently without seeing the original output</p>
+          <p class="col-item">Compares both results: if they differ, the original was likely wrong</p>
+        </div>
+      </div>
+      <p class="slide-text" style="margin-top: 16px; font-size: clamp(13px, 0.9vw, 15px);">
+        If the verifier&rsquo;s confidence is below 0.5, we treat it as a failure regardless of answer match.
+      </p>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: Deployment -->
+  <div class="slide" data-slide="5">
+    <div class="slide-content">
+      <p class="slide-overline">Deployment</p>
+      <h2 class="slide-heading">Single Codebase, Two Modes</h2>
+      <div class="two-col" style="margin-top: 12px;">
+        <div class="col">
+          <p class="col-title" style="color:#6e6e73;">Dev mode</p>
+          <p class="col-item">No Fireworks key needed</p>
+          <p class="col-item">Big solver: vLLM Qwen 14B (local, free)</p>
+          <p class="col-item">Small model: Qwen 3B</p>
+          <p class="col-item">Built-in sample tasks</p>
+        </div>
+        <div class="col">
+          <p class="col-title">Scoring mode</p>
+          <p class="col-item">Fireworks API key injected by platform</p>
+          <p class="col-item">Big solver: Fireworks Qwen 72B</p>
+          <p class="col-item">Reads <span class="code">/input/tasks.json</span>, writes <span class="code">/output/results.json</span></p>
+          <p class="col-item">Exact token count logged per task</p>
+        </div>
+      </div>
+      <p class="slide-text" style="margin-top: 16px; font-size: clamp(12px, 0.9vw, 14px);">
+        Same container works in both environments &mdash; just set or omit <span class="code">FIREWORKS_API_KEY</span>.
+      </p>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Performance -->
+  <div class="slide" data-slide="6">
+    <div class="slide-content-center">
+      <p class="slide-overline">Projections</p>
+      <h2 class="slide-heading" style="text-align:center;">Expected Performance</h2>
+      <div class="numbers">
+        <div class="number-group">
+          <p class="number-value accent">70–80%</p>
+          <p class="number-label">Local Route Rate</p>
+          <div class="number-rule"></div>
+        </div>
+        <div class="number-group">
+          <p class="number-value">&lt;5K</p>
+          <p class="number-label">Fireworks Token Budget</p>
+          <div class="number-rule"></div>
+        </div>
+        <div class="number-group">
+          <p class="number-value accent">75%</p>
+          <p class="number-label">Fewer Tokens vs All-Big</p>
+          <div class="number-rule"></div>
+        </div>
+      </div>
+      <p class="slide-text" style="text-align:center; margin-top: 28px; font-size: clamp(13px, 0.9vw, 15px); max-width: 600px; margin-left: auto; margin-right: auto;">
+        The self-verification loop catches most local mistakes before they escalate, keeping accuracy high while staying under the token budget.
+      </p>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: Tech Stack -->
+  <div class="slide" data-slide="7">
+    <div class="slide-content">
+      <p class="slide-overline">Stack</p>
+      <h2 class="slide-heading">Technology Stack</h2>
+      <p class="tech-list">
+        <span class="tech-item">AMD MI300X</span><span class="tech-sep">·</span>
+        <span class="tech-item">ROCm 7.2</span><span class="tech-sep">·</span>
+        <span class="tech-item">PyTorch 2.9</span><span class="tech-sep">·</span>
+        <span class="tech-item">vLLM 0.16</span><span class="tech-sep">·</span>
+        <span class="tech-item">Qwen2.5-3B</span><span class="tech-sep">·</span>
+        <span class="tech-item">Fireworks AI</span><span class="tech-sep">·</span>
+        <span class="tech-item">Docker</span><span class="tech-sep">·</span>
+        <span class="tech-item">Python 3.11</span><span class="tech-sep">·</span>
+        <span class="tech-item">AMD AI Notebooks</span>
+      </p>
+      <p class="slide-text" style="margin-top: 16px;">
+        Boots in under 60 seconds, exits with code 0, runs on AMD MI300X GPU with 80 GB HBM3.
+      </p>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: Summary -->
+  <div class="slide" data-slide="8">
+    <div class="slide-content">
+      <p class="slide-overline">TokenSage</p>
+      <h2 class="slide-heading">Key Takeaways</h2>
+      <div class="takeaways">
+        <div class="takeaway">
+          Smart, adaptive routing
+          <div class="takeaway-detail">LLM-based two-stage classifier with confidence thresholding auto-escalates uncertain decisions</div>
+        </div>
+        <div class="takeaway">
+          Free verification loop
+          <div class="takeaway-detail">Re-answer from scratch catches 3B mistakes without confirmation bias or Fireworks spend</div>
+        </div>
+        <div class="takeaway">
+          Zero-cost dev, ready for scoring
+          <div class="takeaway-detail">Same container runs locally with 14B fallback or on the platform with Fireworks 72B &mdash; just set the API key</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="progress" id="progress" style="width: 0%;"></div>
+
+<button class="nav-arrow prev" onclick="prevSlide()">←</button>
+<button class="nav-arrow next" onclick="nextSlide()">→</button>
+<div class="slide-counter" id="slideCounter">—</div>
+
+<script>
+  let currentSlide = 0;
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  const progress = document.getElementById('progress');
+  const counter = document.getElementById('slideCounter');
+
+  function goToSlide(index) {
+    if (index < 0 || index >= totalSlides) return;
+    slides.forEach((s, i) => {
+      s.classList.remove('active', 'prev');
+      if (i === index) s.classList.add('active');
+      else if (i < index) s.classList.add('prev');
+    });
+    currentSlide = index;
+    progress.style.width = ((index + 1) / totalSlides * 100) + '%';
+    counter.textContent = String(index + 1).padStart(2, '0') + ' / ' + String(totalSlides).padStart(2, '0');
+  }
+
+  function nextSlide() { goToSlide(currentSlide + 1); }
+  function prevSlide() { goToSlide(currentSlide - 1); }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault(); nextSlide();
+    }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); prevSlide();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.nav-arrow')) return;
+    const rect = document.body.getBoundingClientRect();
+    if (e.clientX > rect.width * 0.5) nextSlide();
+    else prevSlide();
+  });
+
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) { diff > 0 ? nextSlide() : prevSlide(); }
+  });
+
+  goToSlide(0);
+</script>
+
+</body>
+</html>
