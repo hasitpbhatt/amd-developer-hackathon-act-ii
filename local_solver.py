@@ -1,4 +1,5 @@
 import os
+from collections import Counter
 
 _LOCAL_AVAILABLE = None
 _LOCAL_LLM = None
@@ -24,14 +25,46 @@ def _init_local():
         _LOCAL_AVAILABLE = False
         return False
 
-def solve_local(prompt, max_tokens=512, temperature=0.1):
+def _normalize(text):
+    return text.strip().lower().rstrip(".,;!?")
+
+def solve_local_ensemble(prompt, system_prompt=None):
+    if not _init_local():
+        return None, 0.0
+    try:
+        from vllm import SamplingParams
+        tokenizer = _LOCAL_LLM.get_tokenizer()
+        messages = [
+            {"role": "system", "content": system_prompt or "You are a precise AI assistant."},
+            {"role": "user", "content": prompt},
+        ]
+        formatted = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        temps = [0.0, 0.3, 0.7]
+        params = [SamplingParams(temperature=t, max_tokens=512) for t in temps]
+        outputs = _LOCAL_LLM.generate([formatted] * 3, params)
+        answers = []
+        for out in outputs:
+            text = out.outputs[0].text.strip()
+            if text:
+                answers.append(_normalize(text))
+        if not answers:
+            return None, 0.0
+        winner, count = Counter(answers).most_common(1)[0]
+        confidence = count / len(answers)
+        if confidence >= 0.67:
+            return winner, confidence
+        return None, 0.0
+    except Exception:
+        return None, 0.0
+
+def solve_local(prompt, max_tokens=512, temperature=0.1, system_prompt=None):
     if not _init_local():
         return None
     try:
         from vllm import SamplingParams
         tokenizer = _LOCAL_LLM.get_tokenizer()
         messages = [
-            {"role": "system", "content": "You are a precise AI assistant."},
+            {"role": "system", "content": system_prompt or "You are a precise AI assistant."},
             {"role": "user", "content": prompt},
         ]
         formatted = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)

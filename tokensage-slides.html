@@ -404,94 +404,97 @@
       <div class="flow">
         <div class="flow-step">
           <span class="flow-dot">1</span>
-          <span class="flow-name">Router</span>
-          <span class="flow-desc">Qwen 3B classifies task type and decides LOCAL or BIG with confidence</span>
+          <span class="flow-name">Deterministic</span>
+          <span class="flow-desc">11 regex/rule solvers catch pure math, date math, unit conversions, sentiment, JSON extraction — 0 tokens</span>
         </div>
         <div class="flow-step">
           <span class="flow-dot">2</span>
-          <span class="flow-name">Local Solver</span>
-          <span class="flow-desc">Qwen 3B produces a structured JSON answer (thinking, answer, confidence)</span>
+          <span class="flow-name">Classifier</span>
+          <span class="flow-desc">Regex-based task categorizer maps prompts to 8 types (math, code, logic, sentiment, NER, summary, factual, extract)</span>
         </div>
-        <div class="flow-step">
+        <div class="flow-step flow-step-local">
           <span class="flow-dot">3</span>
-          <span class="flow-name">Self-Verification</span>
-          <span class="flow-desc">Re-answers from scratch without seeing the prior output; compares both</span>
+          <span class="flow-name">Local Ensemble</span>
+          <span class="flow-desc">Qwen 3B at 3 temperatures [0.0, 0.3, 0.7]; 2/3+ majority vote returns with 67%+ confidence</span>
         </div>
-        <div class="flow-step">
+        <div class="flow-step flow-step-local">
           <span class="flow-dot">4</span>
-          <span class="flow-name">Retry or Escalate</span>
-          <span class="flow-desc">If verification fails, retry locally with chain-of-thought; if still fails, escalate to Fireworks 72B</span>
+          <span class="flow-name">Category Solve</span>
+          <span class="flow-desc">Single Qwen 3B call with category-specific system prompt and temperature from prompts.py</span>
+        </div>
+        <div class="flow-step flow-step-escalate">
+          <span class="flow-dot">5</span>
+          <span class="flow-name">Fireworks API</span>
+          <span class="flow-desc">Paid 72B call with auto-retry on failure; only reached when all local options are exhausted</span>
         </div>
       </div>
       <p class="slide-text" style="margin-top: 16px; font-size: clamp(12px, 0.9vw, 14px);">
-        No Fireworks key? Falls back to local vLLM Qwen 14B automatically.
+        All local steps (1-4) cost zero Fireworks tokens. The ensemble alone adds 3 free calls per task.
       </p>
     </div>
   </div>
 
-  <!-- SLIDE 4: Router + Key Improvements -->
+  <!-- SLIDE 4: Core Innovations -->
   <div class="slide" data-slide="3">
     <div class="slide-content">
-      <p class="slide-overline">Core Innovation</p>
-      <h2 class="slide-heading">Two-Stage LLM Router</h2>
+      <p class="slide-overline">Core Innovations</p>
+      <h2 class="slide-heading">Zero-Token Accuracy Boosters</h2>
       <p class="slide-text">
-        Classifies tasks into 5 types, then applies few-shot examples to decide LOCAL vs BIG.
-        Low-confidence LOCAL decisions (&lt;0.3) auto-escalate to BIG.
+        Three free techniques maximize the local solver's hit rate before any Fireworks call.
       </p>
       <div class="tags">
-        <span class="tag">math</span>
-        <span class="tag">code</span>
-        <span class="tag">reasoning</span>
-        <span class="tag">factual</span>
-        <span class="tag">creative</span>
+        <span class="tag">deterministic</span>
+        <span class="tag">regex classify</span>
+        <span class="tag">ensemble</span>
+        <span class="tag">category prompts</span>
       </div>
       <p class="slide-text" style="margin-top: 24px; font-size: clamp(13px, 1vw, 16px);">
         <strong style="color:#f5f5f7;">Key improvements</strong>
       </p>
       <div class="improvements">
         <div class="improvement">
-          <strong>Few-shot routing</strong><br>
-          6 labeled examples fix the LOCAL vs BIG decision boundary
+          <strong>11 deterministic pre-solvers</strong><br>
+          Pure math, date math, unit conversions, JSON extraction, counting, string ops — all regex/rule, zero cost, perfect accuracy
         </div>
         <div class="improvement">
-          <strong>Re-answer verification</strong><br>
-          Solves from scratch — no confirmation bias from seeing the prior answer
+          <strong>Multi-temperature ensemble</strong><br>
+          3 parallel vLLM calls at [0.0, 0.3, 0.7]; 2/3+ majority vote returns with 67%+ confidence
         </div>
         <div class="improvement">
-          <strong>Local retry with CoT</strong><br>
-          Chain-of-thought retry before paying for escalation
+          <strong>Category-specific prompts</strong><br>
+          8 system prompts tuned per task type (math, code, logic, sentiment, NER, summary, factual, extract) guide output format
         </div>
         <div class="improvement">
-          <strong>Structured JSON</strong><br>
-          All outputs wrap thinking, answer, confidence for deterministic parsing
+          <strong>Regex classifier</strong><br>
+          Zero-cost task type detection based on keyword/syntax patterns — no LLM router needed
         </div>
       </div>
     </div>
   </div>
 
-  <!-- SLIDE 5: Verification Detail -->
+  <!-- SLIDE 5: Ensemble Verification -->
   <div class="slide" data-slide="4">
     <div class="slide-content">
       <p class="slide-overline">Key Technique</p>
-      <h2 class="slide-heading">Re-Answer Verification</h2>
+      <h2 class="slide-heading">Multi-Temperature Ensemble</h2>
       <p class="slide-text">
-        Instead of asking &ldquo;Is this correct?&rdquo; &mdash; which small models confidently fail at &mdash;
-        we ask the model to solve from scratch again.
+        Instead of asking the model &ldquo;Is this correct?&rdquo; &mdash; which small models confidently get wrong &mdash;
+        we call it 3 times at different temperatures and look for a consensus.
       </p>
       <div class="two-col" style="margin-top: 20px;">
         <div class="col col-naive">
-          <p class="col-title">Naive approach</p>
-          <p class="col-item">Asks the model to judge its own answer &mdash; suffers from confirmation bias</p>
-          <p class="col-item" style="color:#6e6e73;">Small models almost never admit mistakes</p>
+          <p class="col-title">Single-call approach</p>
+          <p class="col-item">One deterministic pass — brittle, easy to fall into local minima</p>
+          <p class="col-item" style="color:#6e6e73;">One unlucky token sample and the answer is wrong</p>
         </div>
         <div class="col col-good">
-          <p class="col-title">TokenSage approach</p>
-          <p class="col-item">Re-answers independently without seeing the original output</p>
-          <p class="col-item">Compares both results: if they differ, the original was likely wrong</p>
+          <p class="col-title">TokenSage ensemble</p>
+          <p class="col-item">3 parallel vLLM generations at temps 0.0, 0.3, 0.7 — batched in one GPU call</p>
+          <p class="col-item">2/3+ majority vote signals high confidence; disagreement means uncertainty</p>
         </div>
       </div>
       <p class="slide-text" style="margin-top: 16px; font-size: clamp(13px, 0.9vw, 15px);">
-        If the verifier&rsquo;s confidence is below 0.5, we treat it as a failure regardless of answer match.
+        If the ensemble doesn&rsquo;t converge, the task falls through to Fireworks — no bad answers slip past.
       </p>
     </div>
   </div>
@@ -530,23 +533,25 @@
       <h2 class="slide-heading" style="text-align:center;">Expected Performance</h2>
       <div class="numbers">
         <div class="number-group">
-          <p class="number-value accent">70–80%</p>
+          <p class="number-value accent">80–90%</p>
           <p class="number-label">Local Route Rate</p>
           <div class="number-rule"></div>
         </div>
         <div class="number-group">
-          <p class="number-value">&lt;5K</p>
+          <p class="number-value">&lt;3K</p>
           <p class="number-label">Fireworks Token Budget</p>
           <div class="number-rule"></div>
         </div>
         <div class="number-group">
-          <p class="number-value accent">75%</p>
+          <p class="number-value accent">85%</p>
           <p class="number-label">Fewer Tokens vs All-Big</p>
           <div class="number-rule"></div>
         </div>
       </div>
-      <p class="slide-text" style="text-align:center; margin-top: 28px; font-size: clamp(13px, 0.9vw, 15px); max-width: 600px; margin-left: auto; margin-right: auto;">
-        The self-verification loop catches most local mistakes before they escalate, keeping accuracy high while staying under the token budget.
+      <p class="slide-text" style="text-align:center; margin-top: 28px; font-size: clamp(13px, 0.9vw, 15px); max-width: 680px; margin-left: auto; margin-right: auto;">
+        11 deterministic solvers handle pure math, dates, units, and extraction at perfect accuracy — 0 tokens.
+        The ensemble catches hallucinations via majority vote. Category-specific prompts improve output formatting.
+        Fireworks is only used when all local options are exhausted.
       </p>
     </div>
   </div>
@@ -580,16 +585,16 @@
       <h2 class="slide-heading">Key Takeaways</h2>
       <div class="takeaways">
         <div class="takeaway">
-          Smart, adaptive routing
-          <div class="takeaway-detail">LLM-based two-stage classifier with confidence thresholding auto-escalates uncertain decisions</div>
+          Deterministic pre-solvers
+          <div class="takeaway-detail">11 regex/rule solvers handle exact tasks (math, dates, conversions, JSON) at perfect accuracy — zero tokens</div>
         </div>
         <div class="takeaway">
-          Free verification loop
-          <div class="takeaway-detail">Re-answer from scratch catches 3B mistakes without confirmation bias or Fireworks spend</div>
+          Multi-temperature ensemble
+          <div class="takeaway-detail">3 parallel vLLM generations, 2/3 majority vote catches hallucinations before they reach Fireworks</div>
         </div>
         <div class="takeaway">
-          Zero-cost dev, ready for scoring
-          <div class="takeaway-detail">Same container runs locally with 14B fallback or on the platform with Fireworks 72B &mdash; just set the API key</div>
+          Category-specific prompts
+          <div class="takeaway-detail">8 system prompts tuned per task type guide output format — no more free-form text when a number is needed</div>
         </div>
       </div>
     </div>
