@@ -235,42 +235,43 @@ else:
     task = st.text_area("Task:", value=selected if selected else "", height=80,
                         placeholder="Enter any question or task...")
 
-    if st.button("▶ Run Pipeline", type="primary") and task:
-        with st.spinner("Routing, solving, verifying..."):
-            progress = st.progress(0)
-            result = run_demo(task)
-            progress.progress(100)
-            time.sleep(0.3)
-            progress.empty()
+    if st.button("▶ Run Pipeline", type="primary"):
+        if not task:
+            st.warning("Please enter a task first.")
+        else:
+            with st.spinner("Routing, solving, verifying..."):
+                progress = st.progress(0)
+                result = run_demo(task)
+                progress.progress(100)
+                time.sleep(0.3)
+                progress.empty()
 
-        route = result["routing"]
-        route_color = "tag-local" if route["router_decision"] == "local" else "tag-big"
-        route_label = "LOCAL (free)" if route["router_decision"] == "local" else "BIG (paid)"
+            route = result["routing"]
+            route_color = "tag-local" if route["router_decision"] == "local" else "tag-big"
+            route_label = "LOCAL (free)" if route["router_decision"] == "local" else "BIG (paid)"
 
-        st.divider()
-        c1, c2, c3 = st.columns(3)
-        c1.markdown(f"**Router Decision**<br><span class='{route_color}'>{route_label}</span>", unsafe_allow_html=True)
-        c1.caption(f"Task type: {route['task_type']}")
-        c2.metric("Confidence", f"{result['confidence']:.0%}")
-        c3.metric("Tokens Used", result["api_tokens"]["total"])
+            st.divider()
+            c1, c2, c3 = st.columns(3)
+            c1.markdown(f"**Router Decision**<br><span class='{route_color}'>{route_label}</span>", unsafe_allow_html=True)
+            c1.caption(f"Task type: {route['task_type']}")
+            c2.metric("Confidence", f"{result['confidence']:.0%}")
+            c3.metric("Tokens Used", result["api_tokens"]["total"])
 
-        st.divider()
-        st.subheader("📋 Routing Details")
-        st.json(route)
+            st.divider()
+            st.subheader("📋 Routing Details")
+            st.json(route)
 
-        st.subheader("💡 Answer")
-        st.markdown(result["answer"])
+            st.subheader("💡 Answer")
+            st.markdown(result["answer"])
 
-        with st.expander("🧠 Thinking"):
-            st.markdown(result["thinking"])
+            with st.expander("🧠 Thinking"):
+                st.markdown(result["thinking"])
 
-        with st.expander("🔍 Verification"):
-            if result.get("verification"):
-                st.json(result["verification"])
-            else:
-                st.info("Skipped (task went to big solver directly or was escalated).")
+            with st.expander("🔍 Verification"):
+                if result.get("verification"):
+                    st.json(result["verification"])
+                else:
+                    st.info("Skipped (task went to big solver directly or was escalated).")
 
-        st.caption(f"Pipeline completed in {result['elapsed_seconds']}s | "
-                   f"Retries: {result['retries']} | Escalated: {result['escalated']}")
-    elif task == "" and st.button("▶ Run Pipeline", type="primary"):
-        st.warning("Please enter a task first.")
+            st.caption(f"Pipeline completed in {result['elapsed_seconds']}s | "
+                       f"Retries: {result['retries']} | Escalated: {result['escalated']}")
