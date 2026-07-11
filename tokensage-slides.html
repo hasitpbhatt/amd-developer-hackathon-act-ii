@@ -369,7 +369,7 @@
         Hybrid Token-Efficient Routing Agent
       </p>
       <p class="slide-text" style="font-size: clamp(14px, 1.1vw, 17px);">
-        Minimize Fireworks AI token spend by routing tasks between a free local vLLM model and a paid large model — without sacrificing accuracy.
+        Minimize Fireworks AI token spend by solving tasks deterministically where possible and using optimized per-category API calls only when needed.
       </p>
     </div>
   </div>
@@ -381,16 +381,16 @@
       <h2 class="slide-heading">The Token Efficiency Challenge</h2>
       <div class="statements">
         <div class="statement">
-          <p class="statement-title">Local inference is free, but limited</p>
-          <p class="statement-text">AMD MI300X runs small models at zero cost, but a 3B model lacks accuracy on complex tasks.</p>
+          <p class="statement-title">Deterministic solves cost nothing</p>
+          <p class="statement-text">Regex and rule-based solvers handle pure math, dates, sentiment, extraction, and more — zero tokens, perfect accuracy.</p>
         </div>
         <div class="statement">
           <p class="statement-title">Every Fireworks token costs you</p>
-          <p class="statement-text">The leaderboard ranks by token spend. The winner is whoever uses the fewest Fireworks tokens while meeting the accuracy gate.</p>
+          <p class="statement-text">The leaderboard ranks by token spend. The winner uses the fewest Fireworks tokens while meeting the accuracy gate.</p>
         </div>
         <div class="statement">
-          <p class="statement-title">The routing tradeoff</p>
-          <p class="statement-text">Route too aggressively and accuracy drops. Route too conservatively and the token budget burns. You need a smart, adaptive router.</p>
+          <p class="statement-title">Minimize API calls</p>
+          <p class="statement-text">No GPU or local model is guaranteed. The router must solve what it can with pure logic, and send only the rest to Fireworks with optimized budgets.</p>
         </div>
       </div>
     </div>
@@ -405,31 +405,21 @@
         <div class="flow-step">
           <span class="flow-dot">1</span>
           <span class="flow-name">Deterministic</span>
-          <span class="flow-desc">11 regex/rule solvers catch pure math, date math, unit conversions, sentiment, JSON extraction — 0 tokens</span>
+          <span class="flow-desc">11 regex/rule solvers catch pure math, date math, unit conversions, sentiment, counting, word problems — 0 tokens</span>
         </div>
         <div class="flow-step">
           <span class="flow-dot">2</span>
           <span class="flow-name">Classifier</span>
-          <span class="flow-desc">Regex-based task categorizer maps prompts to 8 types (math, code, logic, sentiment, NER, summary, factual, extract)</span>
-        </div>
-        <div class="flow-step flow-step-local">
-          <span class="flow-dot">3</span>
-          <span class="flow-name">Local Ensemble</span>
-          <span class="flow-desc">Qwen 3B at 3 temperatures [0.0, 0.3, 0.7]; 2/3+ majority vote returns with 67%+ confidence</span>
-        </div>
-        <div class="flow-step flow-step-local">
-          <span class="flow-dot">4</span>
-          <span class="flow-name">Category Solve</span>
-          <span class="flow-desc">Single Qwen 3B call with category-specific system prompt and temperature from prompts.py</span>
+          <span class="flow-desc">Regex-based task categorizer maps prompts to 8 types (math, sentiment, NER, factual, summarization, etc.)</span>
         </div>
         <div class="flow-step flow-step-escalate">
-          <span class="flow-dot">5</span>
+          <span class="flow-dot">3</span>
           <span class="flow-name">Fireworks API</span>
-          <span class="flow-desc">Paid 72B call with auto-retry on failure; only reached when all local options are exhausted</span>
+          <span class="flow-desc">Per-category model tier, system prompt (4-8 words), max_tokens (50-800), and temperature, with auto-retry on failure</span>
         </div>
       </div>
       <p class="slide-text" style="margin-top: 16px; font-size: clamp(12px, 0.9vw, 14px);">
-        All local steps (1-4) cost zero Fireworks tokens. The ensemble alone adds 3 free calls per task.
+        Deterministic solves (step 1) cost zero Fireworks tokens — they run before any API call is made.
       </p>
     </div>
   </div>
@@ -438,15 +428,15 @@
   <div class="slide" data-slide="3">
     <div class="slide-content">
       <p class="slide-overline">Core Innovations</p>
-      <h2 class="slide-heading">Zero-Token Accuracy Boosters</h2>
+      <h2 class="slide-heading">Zero-Token Strategies</h2>
       <p class="slide-text">
-        Three free techniques maximize the local solver's hit rate before any Fireworks call.
+        Techniques to minimize Fireworks token spend without relying on a local LLM or GPU.
       </p>
       <div class="tags">
         <span class="tag">deterministic</span>
         <span class="tag">regex classify</span>
-        <span class="tag">ensemble</span>
         <span class="tag">category prompts</span>
+        <span class="tag">slim image</span>
       </div>
       <p class="slide-text" style="margin-top: 24px; font-size: clamp(13px, 1vw, 16px);">
         <strong style="color:#f5f5f7;">Key improvements</strong>
@@ -454,47 +444,49 @@
       <div class="improvements">
         <div class="improvement">
           <strong>11 deterministic pre-solvers</strong><br>
-          Pure math, date math, unit conversions, JSON extraction, counting, string ops — all regex/rule, zero cost, perfect accuracy
+          Pure math, date math, unit conversions, JSON extraction, counting, string ops, word problems — all regex/rule, zero cost, perfect accuracy
         </div>
         <div class="improvement">
-          <strong>Multi-temperature ensemble</strong><br>
-          3 parallel vLLM calls at [0.0, 0.3, 0.7]; 2/3+ majority vote returns with 67%+ confidence
+          <strong>Tightened per-category budgets</strong><br>
+          System prompts reduced to 4-8 words; max_tokens tightened (50 for sentiment, 200 NER, 300 factual/summarization, 400 math)
         </div>
         <div class="improvement">
-          <strong>Category-specific prompts</strong><br>
-          8 system prompts tuned per task type (math, code, logic, sentiment, NER, summary, factual, extract) guide output format
+          <strong>Category-specific config</strong><br>
+          8 categories with tailored system prompt, model tier, max_tokens, reasoning_effort, and temperature from prompts.py
         </div>
         <div class="improvement">
           <strong>Regex classifier</strong><br>
-          Zero-cost task type detection based on keyword/syntax patterns — no LLM router needed
+          Zero-cost task type detection based on keyword/syntax patterns — no LLM router needed, no tokens spent
         </div>
       </div>
     </div>
   </div>
 
-  <!-- SLIDE 5: Ensemble Verification -->
+  <!-- SLIDE 5: Key Technique -->
   <div class="slide" data-slide="4">
     <div class="slide-content">
       <p class="slide-overline">Key Technique</p>
-      <h2 class="slide-heading">Multi-Temperature Ensemble</h2>
+      <h2 class="slide-heading">Deterministic Pre-Solving</h2>
       <p class="slide-text">
-        Instead of asking the model &ldquo;Is this correct?&rdquo; &mdash; which small models confidently get wrong &mdash;
-        we call it 3 times at different temperatures and look for a consensus.
+        Before any API call, 11 lightweight rule-based solvers attempt the task. If one matches, the answer is returned immediately — zero tokens, perfect accuracy.
       </p>
       <div class="two-col" style="margin-top: 20px;">
         <div class="col col-naive">
-          <p class="col-title">Single-call approach</p>
-          <p class="col-item">One deterministic pass — brittle, easy to fall into local minima</p>
-          <p class="col-item" style="color:#6e6e73;">One unlucky token sample and the answer is wrong</p>
+          <p class="col-title">What gets solved</p>
+          <p class="col-item">Arithmetic, unit conversion, date math</p>
+          <p class="col-item">Sentiment analysis (lexicon-based)</p>
+          <p class="col-item">JSON parsing, email/URL extraction</p>
+          <p class="col-item">Counting, true/false, percentage, word problems</p>
         </div>
         <div class="col col-good">
-          <p class="col-title">TokenSage ensemble</p>
-          <p class="col-item">3 parallel vLLM generations at temps 0.0, 0.3, 0.7 — batched in one GPU call</p>
-          <p class="col-item">2/3+ majority vote signals high confidence; disagreement means uncertainty</p>
+          <p class="col-title">Why it works</p>
+          <p class="col-item">Pure regex and Python eval — no model needed, 0 tokens</p>
+          <p class="col-item">100% deterministic: same input always gives same answer</p>
+          <p class="col-item">Covers the long tail of simple tasks that would waste API tokens</p>
         </div>
       </div>
       <p class="slide-text" style="margin-top: 16px; font-size: clamp(13px, 0.9vw, 15px);">
-        If the ensemble doesn&rsquo;t converge, the task falls through to Fireworks — no bad answers slip past.
+        Anything the deterministic solvers don't catch falls through to the classifier and then the Fireworks API.
       </p>
     </div>
   </div>
@@ -503,25 +495,25 @@
   <div class="slide" data-slide="5">
     <div class="slide-content">
       <p class="slide-overline">Deployment</p>
-      <h2 class="slide-heading">Single Codebase, Two Modes</h2>
+      <h2 class="slide-heading">Scoring Mode</h2>
       <div class="two-col" style="margin-top: 12px;">
         <div class="col">
-          <p class="col-title" style="color:#6e6e73;">Dev mode</p>
-          <p class="col-item">No Fireworks key needed</p>
-          <p class="col-item">Big solver: vLLM Qwen 14B (local, free)</p>
-          <p class="col-item">Small model: Qwen 3B</p>
-          <p class="col-item">Built-in sample tasks</p>
+          <p class="col-title" style="color:#6e6e73;">Constraints</p>
+          <p class="col-item">No GPU guaranteed — CPU only</p>
+          <p class="col-item">No local model needed</p>
+          <p class="col-item">Must exit with code 0</p>
+          <p class="col-item">9-minute runtime limit</p>
         </div>
         <div class="col">
           <p class="col-title">Scoring mode</p>
           <p class="col-item">Fireworks API key injected by platform</p>
-          <p class="col-item">Big solver: Fireworks Qwen 72B</p>
+          <p class="col-item">ALLOWED_MODELS defines available model tiers</p>
           <p class="col-item">Reads <span class="code">/input/tasks.json</span>, writes <span class="code">/output/results.json</span></p>
           <p class="col-item">Exact token count logged per task</p>
         </div>
       </div>
       <p class="slide-text" style="margin-top: 16px; font-size: clamp(12px, 0.9vw, 14px);">
-        Same container works in both environments &mdash; just set or omit <span class="code">FIREWORKS_API_KEY</span>.
+        Built on <span class="code">python:3.12-slim</span> — ~150MB image, no GPU/ROCm/vLLM dependency.
       </p>
     </div>
   </div>
@@ -533,25 +525,23 @@
       <h2 class="slide-heading" style="text-align:center;">Expected Performance</h2>
       <div class="numbers">
         <div class="number-group">
-          <p class="number-value accent">80–90%</p>
-          <p class="number-label">Local Route Rate</p>
+          <p class="number-value accent">15–25%</p>
+          <p class="number-label">Deterministic Route Rate</p>
           <div class="number-rule"></div>
         </div>
         <div class="number-group">
-          <p class="number-value">&lt;3K</p>
+          <p class="number-value">&lt;10K</p>
           <p class="number-label">Fireworks Token Budget</p>
           <div class="number-rule"></div>
         </div>
         <div class="number-group">
-          <p class="number-value accent">85%</p>
+          <p class="number-value accent">~40%</p>
           <p class="number-label">Fewer Tokens vs All-Big</p>
           <div class="number-rule"></div>
         </div>
       </div>
       <p class="slide-text" style="text-align:center; margin-top: 28px; font-size: clamp(13px, 0.9vw, 15px); max-width: 680px; margin-left: auto; margin-right: auto;">
-        11 deterministic solvers handle pure math, dates, units, and extraction at perfect accuracy — 0 tokens.
-        The ensemble catches hallucinations via majority vote. Category-specific prompts improve output formatting.
-        Fireworks is only used when all local options are exhausted.
+        11 deterministic solvers handle pure math, dates, units, extraction, and simple logic at perfect accuracy — 0 tokens. Per-category token budgets are aggressively tuned (50-800 max_tokens). No GPU dependency, runs anywhere.
       </p>
     </div>
   </div>
@@ -562,18 +552,15 @@
       <p class="slide-overline">Stack</p>
       <h2 class="slide-heading">Technology Stack</h2>
       <p class="tech-list">
-        <span class="tech-item">AMD MI300X</span><span class="tech-sep">·</span>
-        <span class="tech-item">ROCm 7.2</span><span class="tech-sep">·</span>
-        <span class="tech-item">PyTorch 2.9</span><span class="tech-sep">·</span>
-        <span class="tech-item">vLLM 0.16</span><span class="tech-sep">·</span>
-        <span class="tech-item">Qwen2.5-3B</span><span class="tech-sep">·</span>
+        <span class="tech-item">Python 3.12</span><span class="tech-sep">·</span>
         <span class="tech-item">Fireworks AI</span><span class="tech-sep">·</span>
+        <span class="tech-item">python:3.12-slim</span><span class="tech-sep">·</span>
         <span class="tech-item">Docker</span><span class="tech-sep">·</span>
-        <span class="tech-item">Python 3.11</span><span class="tech-sep">·</span>
-        <span class="tech-item">AMD AI Notebooks</span>
+        <span class="tech-item">GHCR</span><span class="tech-sep">·</span>
+        <span class="tech-item">GitHub Actions</span>
       </p>
       <p class="slide-text" style="margin-top: 16px;">
-        Boots in under 60 seconds, exits with code 0, runs on AMD MI300X GPU with 80 GB HBM3.
+        ~150MB image, no GPU dependency, boots in seconds, exits with code 0, runs on any platform with Python.
       </p>
     </div>
   </div>
@@ -586,15 +573,15 @@
       <div class="takeaways">
         <div class="takeaway">
           Deterministic pre-solvers
-          <div class="takeaway-detail">11 regex/rule solvers handle exact tasks (math, dates, conversions, JSON) at perfect accuracy — zero tokens</div>
+          <div class="takeaway-detail">11 regex/rule solvers handle math, dates, conversions, extraction, sentiment, and more — zero tokens, perfect accuracy</div>
         </div>
         <div class="takeaway">
-          Multi-temperature ensemble
-          <div class="takeaway-detail">3 parallel vLLM generations, 2/3 majority vote catches hallucinations before they reach Fireworks</div>
+          Aggressive token budgets
+          <div class="takeaway-detail">Per-category system prompts (4-8 words) and max_tokens (50-800) minimize every API call's token cost</div>
         </div>
         <div class="takeaway">
-          Category-specific prompts
-          <div class="takeaway-detail">8 system prompts tuned per task type guide output format — no more free-form text when a number is needed</div>
+          No GPU required
+          <div class="takeaway-detail">python:3.12-slim base image (~150MB), no ROCm/vLLM dependency, runs anywhere with Python</div>
         </div>
       </div>
     </div>
