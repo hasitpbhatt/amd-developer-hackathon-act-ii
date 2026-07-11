@@ -4,9 +4,11 @@ import os
 import sys
 import time
 
+from classify import classify
 from deterministic import try_deterministic
+from local_solver import solve_local, solve_local_ensemble
 from normalize import normalize_answer
-from prompts import SYSTEM_PROMPT, MAX_TOKENS, TEMPERATURE
+from prompts import SYSTEM_PROMPTS, SYSTEM_PROMPT_API, MAX_TOKENS, TEMPERATURE
 from model_select import load_allowed_models, select_models
 from clients import FireworksClient
 
@@ -30,17 +32,32 @@ async def solve_task(client, models, sem, task):
         log(f"[det] {task_id} tokens=0")
         return {"task_id": task_id, "answer": answer}
 
+    category = classify(prompt)
+    system_prompt = SYSTEM_PROMPTS.get(category)
+
+    local_raw, conf = solve_local_ensemble(prompt, system_prompt)
+    if local_raw:
+        answer = normalize_answer(prompt, local_raw)
+        log(f"[local] {task_id} category={category} ensemble conf={conf:.2f}")
+        return {"task_id": task_id, "answer": answer}
+
+    local_raw = solve_local(prompt, system_prompt)
+    if local_raw:
+        answer = normalize_answer(prompt, local_raw)
+        log(f"[local] {task_id} category={category} single")
+        return {"task_id": task_id, "answer": answer}
+
     model = models["strongest"]
     async with sem:
         try:
             raw_answer, tokens, latency_ms = await client.complete(
-                model, SYSTEM_PROMPT, prompt, MAX_TOKENS,
+                model, SYSTEM_PROMPT_API, prompt, MAX_TOKENS,
                 temperature=TEMPERATURE
             )
             answer = normalize_answer(prompt, raw_answer) if raw_answer else ""
             if answer:
                 warn = " [SLOW]" if latency_ms >= SLOW_CALL_WARNING_MS else ""
-                log(f"[ok] {task_id} model={model} tokens={tokens} latency={latency_ms}ms{warn}")
+                log(f"[api] {task_id} category={category} model={model} tokens={tokens} latency={latency_ms}ms{warn}")
                 return {"task_id": task_id, "answer": answer}
         except Exception as exc:
             log(f"[fail] {task_id} model={model} error={exc}")
